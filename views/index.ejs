@@ -32,7 +32,7 @@
     </head>
     <body>
 
-        <div class="d-flex justify-content-center flex-row" style="margin-top: 10%">
+        <div class="d-flex justify-content-center flex-row" style="margin-top: 8%">
             <div class="d-flex flex-column">
                 <% counter = 0 %>
                 <% for (let i = 0; i < boardSize; i++) { %>
@@ -48,10 +48,29 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-center flex-row" style="margin-top: 5%" onclick="sendRequest()">
-            <button class="btn btn-primary">Solve Sudoku</button>
+        <div class="d-flex justify-content-center flex-row" style="margin-top: 3%" >
+            <button type="button" class="btn btn-primary" onclick="sendRequest()">Solve Sudoku</button>
         </div>
 
+        <div class="d-flex justify-content-center flex-row" style="margin-top: 5%; margin-bottom: 5%">
+            <div class="row justify-content-center">
+                <div class="col-2">
+                    <button type="button" class="btn btn-primary" onclick="getTextArea()">Get Sudoku</button>
+                </div>
+                <div class="col-8">
+                    <textarea id="CopySudoku" cols="40">
+
+                    </textarea>
+                </div>
+                <div class="col-2">
+                    <select id="ModeSelector">
+                        <option value="none">none</option>
+                        <option value="mrv">mrv</option>
+                        <option value="degree">degree</option>
+                    </select>
+                </div>
+            </div>
+        </div>
     </body>
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -75,13 +94,15 @@
                 url: "/",
                 withCredentials: true,
                 data: {
-                    sudokuBoard
+                    sudokuBoard,
+                    mode: document.getElementById('ModeSelector').value
                 }
             }
 
             try {
                 const response = await axios(config);
                 console.log(response);
+                loadTable(response.data.data)
                 sendToast(response.data.message, true)
             } catch (err) {
                 sendToast(err.response.data.message, false)
@@ -111,7 +132,31 @@
                 onClick: function(){} // Callback after click
             }).showToast();
         }
+
+        async function getTextArea() {
+            const Sudoku = document.getElementById('CopySudoku').value
+            const SudokuJson = JSON.parse(Sudoku);
+            const SudokuArray = SudokuJson.data;
+
+            loadTable(SudokuArray)
+
+        }
+
+        function loadTable (dataArray) {
+            const boardSize = <%= boardSize %>;
+
+            let counter = 0;
+
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    document.getElementById(counter.toString()).value = dataArray[i][j];
+                    counter++;
+                }
+            }
+        }
+
     </script>
+
 
 
 </html>

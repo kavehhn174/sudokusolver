@@ -1,10 +1,20 @@
-function solveSudoku(board) {
+function solveSudoku(board, mode) {
 
     // Board Dimensions
     const N = board.length;
 
     // Gets possible values for all cells and sorts them based on numbers of possible values
-    const emptyCell = availableNumbersForAllCells(board);
+    let emptyCell = availableNumbersForAllCells(board);
+
+    // If selected mode is MRV, it sorts the cells based on the available numbers left (descending)
+    if (mode === "mrv") {
+        sortBasedOnMRV(emptyCell);
+    }
+
+    // If selected mode is Degree, the arrays sorts based on the number of empty cells in its row, col & box (ascending)
+    if (mode === "degree") {
+        emptyCell = calculateAndSortDegree(board, emptyCell);
+    }
 
     if (emptyCell.length === 0) {
         // If No more empty cells, Sudoku is solved
@@ -14,17 +24,8 @@ function solveSudoku(board) {
     const { row, col } = emptyCell[0];
     const availableNumbers = getAvailableNumbers(board, row, col);
 
-    // Sort available numbers based on MRV heuristic (ascending order)
-    availableNumbers.sort((a,b) => {
-        if (a === b) {
-            const aCount = howManySafe(board, row, col, a);
-            const bCount = howManySafe(board, row, col, b);
-            return aCount - bCount;
-        }
-        return a - b;
-    })
 
-
+    // Placing a number on the board and recursively calling the function
     for (const num of availableNumbers) {
         if (isSafe(board, row, col, num)) {
             // Place the number if it's safe
@@ -42,6 +43,91 @@ function solveSudoku(board) {
 
     // No valid number found, backtrack
     return false;
+}
+
+function sortBasedOnMRV (emptyCell) {
+    emptyCell.sort( (a,b) => {
+        if (a.possibleValues.length < b.possibleValues.length) {
+            return -1;
+        }
+        if (a.possibleValues.length > b.possibleValues.length) {
+            return 1;
+        }
+        return 0;
+    })
+}
+
+function calculateAndSortDegree (board, emptyCells) {
+    for (let i = 0; i < emptyCells.length; i++) {
+
+        const { row, col } = emptyCells[i];
+        const boxCounter = emptyCellsInBox(board, col, row);
+        const rowCounter = emptyCellsInRow(board, col, row);
+        const cellCounter = emptyCellsInColumn(board, col, row);
+
+        emptyCells[i].degree = boxCounter + rowCounter + cellCounter;
+
+    }
+
+    emptyCells.sort( (a,b) => {
+        if (a.degree < b.degree) {
+            return 1;
+        }
+        if (a.degree > b.degree) {
+            return -1;
+        }
+        return 0;
+    })
+
+    return emptyCells;
+}
+
+
+function emptyCellsInBox(board, cell, row) {
+
+    // Determine the starting position of the box
+    const boxStartRow = 3 * Math.floor(row / 3);
+    const boxStartCol = 3 * Math.floor(cell / 3);
+
+    // Iterate through the cells in the box and count the empty ones
+    let emptyCellCount = 0;
+    for (let i = boxStartRow; i < boxStartRow + 3; i++) {
+        for (let j = boxStartCol; j < boxStartCol + 3; j++) {
+            if (board[i][j] === 0) {
+                emptyCellCount++;
+            }
+        }
+    }
+
+    return emptyCellCount;
+}
+
+function emptyCellsInRow(board, col, row) {
+    // Get the row from the Sudoku table
+    const boardRow = board[row];
+
+    // Count the empty cells in the row
+    let emptyCellCount = 0;
+    for (let i = 0; i < boardRow.length; i++) {
+        if (boardRow[i] === 0) {
+            emptyCellCount++;
+        }
+    }
+
+    return emptyCellCount;
+}
+
+function emptyCellsInColumn(board, col, row) {
+    const N = board.length;
+    // Count the empty cells in the column
+    let emptyCellCount = 0;
+    for (let i = 0; i < N; i++) {
+        if (board[i][col] === 0) {
+            emptyCellCount++;
+        }
+    }
+
+    return emptyCellCount;
 }
 
 function howManySafe(board,row, col, num) {
@@ -77,37 +163,7 @@ function availableNumbersForAllCells(board) {
         }
     }
 
-    availableNumbers.sort( (a,b) => {
-        if (a.possibleValues.length < b.possibleValues.length) {
-            return -1;
-        }
-        if (a.possibleValues.length > b.possibleValues.length) {
-            return 1;
-        }
-        return 0;
-    })
-
     return availableNumbers;
-}
-function findEmptyCell(board) {
-    let count = 0;
-    const N = board.length;
-
-    for (let row = 0; row < N; row++) {
-        for (let col = 0; col < N; col++) {
-            if (board[row][col] === 0) {
-                count++;
-            }
-        }
-    }
-    for (let row = 0; row < N; row++) {
-        for (let col = 0; col < N; col++) {
-            if (board[row][col] === 0) {
-                return { row, col , count};
-            }
-        }
-    }
-    return null;
 }
 
 function getAvailableNumbers(board, row, col) {
@@ -190,23 +246,6 @@ function isUsedInBox(board, startRow, startCol, num) {
     return false;
 }
 
-function countPossibilities(board, row, col, num) {
-    let count = 0;
-    if (isSafe(board, row, col, num)) {
-        board[row][col] = num;
-        const N = board.length;
-        for (let r = 0; r < N; r++) {
-            for (let c = 0; c < N; c++) {
-                if (board[r][c] === 0 && isSafe(board, r, c, num)) {
-                    count++;
-                }
-            }
-        }
-        board[row][col] = 0;
-    }
-    return count;
-}
-
 function printBoard(board) {
     const N = board.length;
     for (let row = 0; row < N; row++) {
@@ -214,9 +253,9 @@ function printBoard(board) {
     }
 }
 
-function start(sudokuBoard) {
+function start(sudokuBoard, mode) {
 
-    if (solveSudoku(sudokuBoard)) {
+    if (solveSudoku(sudokuBoard, mode)) {
         printBoard(sudokuBoard);
         return {
             status: 'success',
